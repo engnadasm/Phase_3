@@ -1,0 +1,7 @@
+flex lex.l
+bison -y -d semantic.y
+g++ -std=gnu++11 lex.yy.c y.tab.c
+a.exe
+java -jar jasmin.jar byteCode.j
+javap -c "name_file of .class".class
+java "name_file of .class"

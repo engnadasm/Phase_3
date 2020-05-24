@@ -27,43 +27,70 @@ map<string,string> inst_list = {
 	{">",  "if_icmpgt"},
 	{"<",  "if_icmplt"}
 };
+vector<string> ListOFCode;
+void addToListCode(string x);
+void printCode(void);
+
 void printLineNumber(int num)
 {
-	addLineCode(".line "+ to_string(num));
+	addToListCode(".line "+ to_string(num));
 }
-%}
 
+%}
+%code requires {
+	#include <vector>
+	#include <map>
+	#include <string>
+	#include <iostream> 
+
+	using namespace std;
+}
 
 %token <ival> INT
 %token <fval> FLOAT
 %token <bval> BOOL
 %token <idval> IDENTIFIER
 %token <aopval> ARITH_OP
-%token <aopval> RELA_OP
-%token <aopval> BOOL_OP
-
+%token <aopval> RELOP
+%token <aopval> BOOLEAN_OP
 %token IF_WORD
 %token ELSE_WORD
 %token WHILE_WORD
 %token FOR_WORD
-
 %token INT_WORD
 %token FLOAT_WORD
 %token BOOLEAN_WORD
-
-%token SEMI_COLON
-%token EQUALS
-
+%token SEMICOLON
+%token EQUAL
 %token LEFT_BRACKET
 %token RIGHT_BRACKET
 %token LEFT_BRACKET_CURLY
 %token RIGHT_BRACKET_CURLY
-
 %token SYSTEM_OUT
 
-%%
+%type <ival> goto
 
 %%
+goto:
+{
+	$$ = codeList.size();
+	addToListCode("goto ");
+}
+;
+%%
+
+void addToListCode(string x)
+{
+	ListOFCode.push_back(x);
+}
+
+void printCode(void)
+{
+	for ( int i = 0 ; i < ListOFCode.size() ; i++)
+	{
+		printf(ListOFCode[i]+ "\n");
+	}
+}
 main (int argv, char * argc[])
 {
 }
