@@ -1,10 +1,15 @@
 %{
 #include <bits/stdc++.h>
 #include <unistd.h>
+extern int yylex();
+extern int yyparse();
+extern FILE *yyin;
 extern int lineCounter;
+using namespace std;
+
 /* file for writing output byteCode */
 ofstream fileOut("byteCode.j");
-using namespace std;
+
 typedef enum {INT_TYPE, FLOAT_TYPE} type_enum;
 map<string, pair<int,type_enum> > symTab;
 int variablesNum = 1;/*used to assign Number for new local variable*/
@@ -33,7 +38,7 @@ void addLocalVar(string name, int type);/*add new local variable to symbol table
 bool IsDeclared(string name);/*check if variable is in symTab*/
 void addCode(string code);
 void yyerror(const char * s);
-void void generateHeader();
+void generateHeader();
 void generateFooter();
 void printLineNumber(int num)
 {
@@ -46,7 +51,7 @@ void printLineNumber(int num)
 	#include <vector>
 	#include <map>
 	#include <string>
-	#include <iostream> 
+	#include <iostream>
 
 	using namespace std;
 }
@@ -62,6 +67,8 @@ void printLineNumber(int num)
 	struct {
 		vector<int> *nextList;
 	} stmt_type;
+		int dType;
+
 }
 %start method_body
 %token <ival> INT
@@ -106,14 +113,14 @@ statement_list : statement
 			   statement statement_list
 ;
 statement : declaration {$$.nextList = new vector<int>();}
-				| 
+				|
 				WHILE
-				| 
+				|
 				FOR
 				|
 				assignment {$$.nextList = new vector<int>();}
 ;
-declaration : primitive_type  IDENTIFIER SEMICOLON 
+declaration : primitive_type  IDENTIFIER SEMICOLON
 				{
 					string var($2);
 					if($1 == INT_TYPE){
@@ -123,9 +130,9 @@ declaration : primitive_type  IDENTIFIER SEMICOLON
 					}
 				}
 ;
-primitive_type  : INT_WORD { $$ = INT_TYPE}
+primitive_type  : INT_WORD { $$ = INT_TYPE;}
 					|
-				FLOAT_WORD { $$ = FLOAT_TYPE}
+				FLOAT_WORD { $$ = FLOAT_TYPE;}
 ;
 if : IF_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY ELSE_WORD LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
 ;
@@ -175,7 +182,7 @@ factor : IDENTIFIER
 | num{$$.dType = $1.dType;}
 | LEFT_BRACKET expression RIGHT_BRACKET
 ;
-num : INT {$$.dType = INT_TYPE;  addCode("ldc "+to_string($1));} 
+num : INT {$$.dType = INT_TYPE;  addCode("ldc "+to_string($1));}
 	   |
 	  FLOAT{$$.dType = FLOAT_TYPE; addCode("ldc "+to_string($1));}
 ;
@@ -228,7 +235,7 @@ void addLocalVar(string name, int type)
 	}else{
 		symTab[name] = make_pair(variablesNum++,(type_enum)type);
 	}
-		
+
 }
 bool IsDeclared(string name)
 {
