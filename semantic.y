@@ -10,7 +10,7 @@ using namespace std;
 /* file for writing output byteCode */
 ofstream fileOut("byteCode.j");
 
-typedef enum {INT_TYPE, FLOAT_TYPE} type_enum;
+typedef enum {INT_TYPE, FLOAT_TYPE, ERROR_TYPE} type_enum;
 map<string, pair<int,type_enum> > symTab;
 int variablesNum = 1;/*used to assign Number for new local variable*/
 vector<string> ListOFCode;
@@ -159,7 +159,7 @@ assignment : IDENTIFIER EQUAL expression SEMICOLON
 						addCode("fstore " + to_string(symTab[var].first));
 					}
 				}else{
-					yyerror("Type checking Error");
+					yyerror("assignment: Type checking Error");
 				}
 			}else{
 				string err = "identifier: "+var+" isn't declared in this scope";
@@ -172,21 +172,95 @@ expression : simple_expression {$$.dType = $1.dType;}
 | simple_expression BOOLEAN_OP simple_expression
 ;
 simple_expression : term {$$.dType = $1.dType;}
-| sign term {$$.dType = $2.dType;}
-| simple_expression ADD_OP term
+					|
+					sign term 
+					{
+						$$.dType = $2.dType;
+						if($2.dType == INT_TYPE)
+						{
+							addCode("imul");
+						}
+						else if ($2.dType == FLOAT_TYPE)
+						{
+							addCode("fmul");
+						}
+					}
+					| 
+					simple_expression ADD_OP term 
+					{if($1.dType == $3.dType)
+						{
+							$$.dType = $1.dType;
+							if($1.dType == INT_TYPE)
+							{
+								addCode("i" + inst_list[string($2)]);
+							}
+							else if ($1.dType == FLOAT_TYPE)
+							{
+								addCode("f" + inst_list[string($2)]);
+							}
+						}
+						else
+						{
+							yyerror("simple_expression ADD_OP term: Type checking Error");
+						}
+					}
 ;
 term : factor {$$.dType = $1.dType;}
-| term MUL_OP factor
+		| 
+	   term MUL_OP factor
+       {
+			if($1.dType == $3.dType)
+			{
+				$$.dType = $1.dType;
+				if($1.dType == INT_TYPE)
+				{
+					addCode("i" + inst_list[string($2)]);
+				}
+				else if ($1.dType == FLOAT_TYPE)
+				{
+				addCode("f" + inst_list[string($2)]);
+				}
+			}
+			else
+			{
+			yyerror("term MUL_OP factor : Type checking Error");
+			}
+		}
 ;
 factor : IDENTIFIER
-| num{$$.dType = $1.dType;}
-| LEFT_BRACKET expression RIGHT_BRACKET
+		{
+	     string var($1);
+		  if(IsDeclared(var))
+		{
+			$$.dType = symTab[var].second;
+			if(symTab[var].second == INT_TYPE)
+			{
+				addCode("iload " + to_string(symTab[var].first));
+			}else if (symTab[var].second == FLOAT_TYPE)
+			{
+				addCode("fload " + to_string(symTab[var].first));
+			}
+		}
+		else
+		{
+			string err = "identifier: "+var+" isn't declared in this scope";
+			yyerror(err.c_str());
+			$$.dType = ERROR_TYPE;
+		}
+		}
+			| 
+		num{$$.dType = $1.dType;}
+			|
+			LEFT_BRACKET expression RIGHT_BRACKET {$$.dType = $2.dType;}
 ;
 num : INT {$$.dType = INT_TYPE;  addCode("ldc "+to_string($1));}
 	   |
 	  FLOAT{$$.dType = FLOAT_TYPE; addCode("ldc "+to_string($1));}
 ;
-sign : ADD_OP
+sign : ADD_OP  {
+				if(string($1) == "-"){addCode("ldc -1");}
+				else{addCode("ldc 1");}
+			   }
 ;
 goto:
 {
