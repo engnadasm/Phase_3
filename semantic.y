@@ -33,6 +33,8 @@ void addLocalVar(string name, int type);/*add new local variable to symbol table
 bool IsDeclared(string name);/*check if variable is in symTab*/
 void addCode(string code);
 void yyerror(const char * s);
+void void generateHeader();
+void generateFooter();
 void printLineNumber(int num)
 {
 	addCode(".line "+ to_string(num));
@@ -52,9 +54,14 @@ void printLineNumber(int num)
     int ival;
     int fval;
     int bval;
-    char idval[100];
-    char operval[50];
+    char* idval;
+    char* operval;
+	struct{
 	int dType;
+	}expr_type;
+	struct {
+		vector<int> *nextList;
+	} stmt_type;
 }
 %start method_body
 %token <ival> INT
@@ -85,11 +92,12 @@ void printLineNumber(int num)
 
 %type <ival> goto
 %type <dType> primitive_type
-%type <dType> expression
-%type <dType> simple_expression
-%type <dType> term
-%type <dType> factor
-%type <dType> num
+%type <expr_type> expression
+%type <expr_type> simple_expression
+%type <expr_type> term
+%type <expr_type> factor
+%type <expr_type> num
+%type <stmt_type> statement
 %%
 method_body : {generateHeader();} statement_list {generateFooter();}
 ;
@@ -99,13 +107,11 @@ statement_list : statement
 ;
 statement : declaration {$$.nextList = new vector<int>();}
 				| 
-				if {$$.nextList = $1.nextList;}
-				| 
 				WHILE
 				| 
 				FOR
 				|
-				assignment {$$.nextList = $1.nextList;}
+				assignment {$$.nextList = new vector<int>();}
 ;
 declaration : primitive_type  IDENTIFIER SEMICOLON 
 				{
@@ -121,11 +127,11 @@ primitive_type  : INT_WORD { $$ = INT_TYPE}
 					|
 				FLOAT_WORD { $$ = FLOAT_TYPE}
 ;
-if : IF_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY STATEMENT RIGHT_BRACKET_CURLY ELSE_WORD LEFT_BRACKET_CURLY STATEMENT RIGHT_BRACKET_CURLY
+if : IF_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY ELSE_WORD LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
 ;
-WHILE : WHILE_WORD LEFT_BRACKET EXPRESSION RIGHT_BRACKET LEFT_BRACKET_CURLY STATEMENT RIGHT_BRACKET_CURLY
+WHILE : WHILE_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
 ;
-FOR : FOR_WORD LEFT_BRACKET assignment EXPRESSION SEMICOLON COUNTER RIGHT_BRACKET LEFT_BRACKET_CURLY STATEMENT RIGHT_BRACKET_CURLY
+FOR : FOR_WORD LEFT_BRACKET assignment expression SEMICOLON COUNTER RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
 ;
 COUNTER : CHANGE IDENTIFIER
 ;
@@ -169,9 +175,9 @@ factor : IDENTIFIER
 | num{$$.dType = $1.dType;}
 | LEFT_BRACKET expression RIGHT_BRACKET
 ;
-num : INT {$$.Type = INT_TYPE;  addCode("ldc "+to_string($1));} 
+num : INT {$$.dType = INT_TYPE;  addCode("ldc "+to_string($1));} 
 	   |
-	  FLOAT{$$.Type = FLOAT_TYPE; addCode("ldc "+to_string($1));}
+	  FLOAT{$$.dType = FLOAT_TYPE; addCode("ldc "+to_string($1));}
 ;
 sign : ADD_OP
 ;
