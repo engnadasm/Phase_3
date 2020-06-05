@@ -41,22 +41,28 @@ void printLineNumber(int num)
 	#include <vector>
 	#include <map>
 	#include <string>
-	#include <iostream> 
+	#include <iostream>
 
 	using namespace std;
 }
-
+%union{
+    int ival;
+    int fval;
+    int bval;
+    char idval[100];
+    char operval[50];
+}
 %start METHOD_BODY
 %token <ival> INT
 %token <fval> FLOAT
 %token <bval> BOOL
 %token <idval> IDENTIFIER
-%token <aopval> ADD_OP
-%token <aopval> MUL_OP
-%token <aopval> RELOP
-%token <aopval> BOOLEAN_OP
-%token <aopval> INCREMENT
-%token <aopval> DECREMENT
+%token <operval> ADD_OP
+%token <operval> MUL_OP
+%token <operval> RELOP
+%token <operval> BOOLEAN_OP
+%token <operval> INCREMENT
+%token <operval> DECREMENT
 %token IF_WORD
 %token ELSE_WORD
 %token WHILE_WORD

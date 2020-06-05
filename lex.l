@@ -34,12 +34,12 @@ binary "true"|"false"
 "--" {return DECREMENT;}
 "System.out.println" {return SYSTEM_OUT;}
 \n {lineCounter++;printLineNumber(lineCounter);}
-{addop}	{yylval.aopval = strdup(yytext); return ADD_OP;}
-{mulop}	{yylval.aopval = strdup(yytext); return MUL_OP;}
+{addop}	{yylval.operval = strdup(yytext); return ADD_OP;}
+{mulop}	{yylval.operval = strdup(yytext); return MUL_OP;}
 {intnum}	{yylval.ival = atoi(yytext); return INT;}
 {floatnum}	{yylval.fval = atof(yytext); return FLOAT;}
-{relop} {yylval.aopval = strdup(yytext); return RELOP;}
-{bool} {yylval.aopval = strdup(yytext); return BOOLEAN_OP;}
+{relop} {yylval.operval = strdup(yytext); return RELOP;}
+{bool} {yylval.operval = strdup(yytext); return BOOLEAN_OP;}
 {binary} {if(!strcmp(yytext,"true")){ yylval.bval = 1;} else { yylval.bval = 0;} return BOOL;}
 {id} {yylval.idval = strdup(yytext);return IDENTIFIER;}
 {assign} {return EQUAL;}
