@@ -30,6 +30,8 @@ binary "true"|"false"
 ")" {return RIGHT_BRACKET;}
 "{" {return LEFT_BRACKET_CURLY;}
 "}" {return RIGHT_BRACKET_CURLY;}
+"++" {return INCREMENT;}
+"--" {return DECREMENT;}
 "System.out.println" {return SYSTEM_OUT;}
 \n {lineCounter++;printLineNumber(lineCounter);}
 {addop}	{yylval.aopval = strdup(yytext); return ADD_OP;}
