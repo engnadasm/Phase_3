@@ -45,6 +45,7 @@ void addCode(string code);
 void yyerror(const char * s);
 void generateHeader();
 void generateFooter();
+string getRelop(string relop);
 void printLineNumber(int num)
 {
 	addCode(".line "+ to_string(num));
@@ -154,7 +155,7 @@ statement_list : statement
 statement : declaration {$$.nextList = new vector<int>();}
                 | if {$$.nextList = $1.nextList;}
 				|
-				WHILE
+				WHILE {$$.nextList = $1.nextList;}
 				|
 				FOR
 				|
@@ -189,8 +190,7 @@ boolean_exp: BOOL
     addCode("goto ");
 }
 }
-|
-boolean_exp BOOLEAN_OP init_label boolean_exp
+| boolean_exp BOOLEAN_OP init_label boolean_exp
 {if(!strcmp($2, "&&")){
     addToNext($1.trueList,$3);
     $$.trueList = $4.trueList;
@@ -201,9 +201,16 @@ boolean_exp BOOLEAN_OP init_label boolean_exp
     $$.falseList = $4.falseList;
 }
 }
-|
-expression RELOP expression
-{}
+| expression RELOP expression
+{
+string relop($2);
+$$.trueList = new vector<int>();
+$$.trueList->push_back(ListOFCode.size());
+$$.falseList = new vector<int>();
+$$.falseList->push_back(ListOFCode.size() + 1);
+addCode(getRelop(relop) + " ");
+addCode("goto ");
+}
 ;
 //     1        2               3           4           5                   6           7         8     9                       10      11                  12          13          14
 if : IF_WORD LEFT_BRACKET boolean_exp RIGHT_BRACKET LEFT_BRACKET_CURLY init_label statement_list goto RIGHT_BRACKET_CURLY ELSE_WORD LEFT_BRACKET_CURLY init_label statement_list RIGHT_BRACKET_CURLY
@@ -214,9 +221,15 @@ $$.nextList = checkTFList($7.nextList, $13.nextList);
 $$.nextList->push_back($8);
 }
 ;
-WHILE : WHILE_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement_list RIGHT_BRACKET_CURLY
+WHILE : init_label WHILE_WORD LEFT_BRACKET boolean_exp RIGHT_BRACKET LEFT_BRACKET_CURLY init_label statement_list RIGHT_BRACKET_CURLY
+{
+addCode("goto L_" + to_string($1));
+addToNext($8.nextList, $1);
+addToNext($4.trueList, $7);
+$$.nextList = $4.falseList;
+}
 ;
-FOR : FOR_WORD LEFT_BRACKET assignment expression SEMICOLON COUNTER RIGHT_BRACKET LEFT_BRACKET_CURLY statement_list RIGHT_BRACKET_CURLY
+FOR : FOR_WORD LEFT_BRACKET assignment boolean_exp SEMICOLON COUNTER RIGHT_BRACKET LEFT_BRACKET_CURLY statement_list RIGHT_BRACKET_CURLY
 ;
 COUNTER : CHANGE IDENTIFIER
 ;
@@ -401,6 +414,14 @@ bool IsDeclared(string name)
 void addCode(string code)
 {
 	ListOFCode.push_back(code);
+}
+string getRelop(string relop)
+{
+if(inst_list.find(relop) != inst_list.end())
+{
+return inst_list[relop];
+}
+return "";
 }
 void generateHeader()
 {
