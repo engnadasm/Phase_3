@@ -1,16 +1,21 @@
 %{
 #include <bits/stdc++.h>
 #include <unistd.h>
+#define TRUE 1
+#define FALSE 0
+
 extern int yylex();
 extern int yyparse();
 extern FILE *yyin;
 extern int lineCounter;
+int labelsCount = 0;
+
 using namespace std;
 
 /* file for writing output byteCode */
 ofstream fileOut("byteCode.j");
 
-typedef enum {INT_TYPE, FLOAT_TYPE, ERROR_TYPE} type_enum;
+typedef enum {INT_TYPE, FLOAT_TYPE, ERROR_TYPE, BOOL_TYPE} type_enum;
 map<string, pair<int,type_enum> > symTab;
 int variablesNum = 1;/*used to assign Number for new local variable*/
 vector<string> ListOFCode;
@@ -44,6 +49,30 @@ void printLineNumber(int num)
 {
 	addCode(".line "+ to_string(num));
 }
+void addToNext(vector<int> *list, int n)
+{//nada
+	for(int i = 0 ; i < list->size() ; i++)
+	{
+		ListOFCode[(*list)[i]] = ListOFCode[(*list)[i]] + "L_"+to_string(n);
+	}
+}
+vector<int> * checkTFList(vector<int> *list1, vector<int> *list2)
+{//nada
+	if(list1 && list2){
+		vector<int> *list = new vector<int> (*list1);
+		list->insert(list->end(), list2->begin(),list2->end());
+		return list;
+	}else if(list1)
+	{
+		return list1;
+	}else if (list2)
+	{
+		return list2;
+	}else
+	{
+		return new vector<int>();
+	}
+}
 
 %}
 
@@ -62,13 +91,15 @@ void printLineNumber(int num)
     char* idval;
     char* operval;
 	struct{
-	int dType;
+        int dType;
 	}expr_type;
 	struct {
 		vector<int> *nextList;
 	} stmt_type;
-		int dType;
-
+    int dType;
+    struct {
+		vector<int> *trueList, *falseList;
+	} boolexpr_type;
 }
 %start method_body
 %token <ival> INT
@@ -98,6 +129,8 @@ void printLineNumber(int num)
 %token SYSTEM_OUT
 
 %type <ival> goto
+%type <ival> init_label
+
 %type <dType> primitive_type
 %type <expr_type> expression
 %type <expr_type> simple_expression
@@ -105,14 +138,21 @@ void printLineNumber(int num)
 %type <expr_type> factor
 %type <expr_type> num
 %type <stmt_type> statement
+
+%type <stmt_type> if
+%type <stmt_type> WHILE
+%type <stmt_type> FOR
+%type <boolexpr_type> boolean_exp
+%type <stmt_type> statement_list
 %%
-method_body : {generateHeader();} statement_list {generateFooter();}
+method_body : {generateHeader();} statement_list init_label {addToNext($2.nextList,$3); generateFooter();}
 ;
 statement_list : statement
 			        |
-			   statement statement_list
+			   statement init_label statement_list {addToNext($1.nextList,$2); $$.nextList = $3.nextList;}
 ;
 statement : declaration {$$.nextList = new vector<int>();}
+                | if {$$.nextList = $1.nextList;}
 				|
 				WHILE
 				|
@@ -133,12 +173,50 @@ declaration : primitive_type  IDENTIFIER SEMICOLON
 primitive_type  : INT_WORD { $$ = INT_TYPE;}
 					|
 				FLOAT_WORD { $$ = FLOAT_TYPE;}
+					|
+					BOOLEAN_WORD {$$ = BOOL_TYPE;}
 ;
-if : IF_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY ELSE_WORD LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
+boolean_exp: BOOL
+{if($1){//means bool is true
+    $$.trueList = new vector<int> ();
+    $$.trueList->push_back(ListOFCode.size());
+    $$.falseList = new vector<int>();
+    addCode("goto ");
+} else {//means bool is false
+    $$.trueList = new vector<int> ();
+    $$.falseList= new vector<int>();
+    $$.falseList->push_back(ListOFCode.size());
+    addCode("goto ");
+}
+}
+|
+boolean_exp BOOLEAN_OP init_label boolean_exp
+{if(!strcmp($2, "&&")){
+    addToNext($1.trueList,$3);
+    $$.trueList = $4.trueList;
+    $$.falseList = checkTFList($1.falseList, $4.falseList);
+}else if(!strcmp($2, "||")){
+    addToNext($1.falseList,$3);
+    $$.trueList = checkTFList($1.trueList, $4.trueList);
+    $$.falseList = $4.falseList;
+}
+}
+|
+expression RELOP expression
+{}
 ;
-WHILE : WHILE_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
+//     1        2               3           4           5                   6           7         8     9                       10      11                  12          13          14
+if : IF_WORD LEFT_BRACKET boolean_exp RIGHT_BRACKET LEFT_BRACKET_CURLY init_label statement_list goto RIGHT_BRACKET_CURLY ELSE_WORD LEFT_BRACKET_CURLY init_label statement_list RIGHT_BRACKET_CURLY
+{
+addToNext($3.trueList,$6);
+addToNext($3.falseList,$12);
+$$.nextList = checkTFList($7.nextList, $13.nextList);
+$$.nextList->push_back($8);
+}
 ;
-FOR : FOR_WORD LEFT_BRACKET assignment expression SEMICOLON COUNTER RIGHT_BRACKET LEFT_BRACKET_CURLY statement RIGHT_BRACKET_CURLY
+WHILE : WHILE_WORD LEFT_BRACKET expression RIGHT_BRACKET LEFT_BRACKET_CURLY statement_list RIGHT_BRACKET_CURLY
+;
+FOR : FOR_WORD LEFT_BRACKET assignment expression SEMICOLON COUNTER RIGHT_BRACKET LEFT_BRACKET_CURLY statement_list RIGHT_BRACKET_CURLY
 ;
 COUNTER : CHANGE IDENTIFIER
 ;
@@ -168,12 +246,11 @@ assignment : IDENTIFIER EQUAL expression SEMICOLON
 		}
 ;
 expression : simple_expression {$$.dType = $1.dType;}
-| simple_expression RELOP simple_expression
-| simple_expression BOOLEAN_OP simple_expression
+| boolean_exp
 ;
 simple_expression : term {$$.dType = $1.dType;}
 					|
-					sign term 
+					sign term
 					{
 						$$.dType = $2.dType;
 						if($2.dType == INT_TYPE)
@@ -185,8 +262,8 @@ simple_expression : term {$$.dType = $1.dType;}
 							addCode("fmul");
 						}
 					}
-					| 
-					simple_expression ADD_OP term 
+					|
+					simple_expression ADD_OP term
 					{if($1.dType == $3.dType)
 						{
 							$$.dType = $1.dType;
@@ -206,7 +283,7 @@ simple_expression : term {$$.dType = $1.dType;}
 					}
 ;
 term : factor {$$.dType = $1.dType;}
-		| 
+		|
 	   term MUL_OP factor
        {
 			if($1.dType == $3.dType)
@@ -248,7 +325,7 @@ factor : IDENTIFIER
 			$$.dType = ERROR_TYPE;
 		}
 		}
-			| 
+			|
 		num{$$.dType = $1.dType;}
 			|
 			LEFT_BRACKET expression RIGHT_BRACKET {$$.dType = $2.dType;}
@@ -261,6 +338,12 @@ sign : ADD_OP  {
 				if(string($1) == "-"){addCode("ldc -1");}
 				else{addCode("ldc 1");}
 			   }
+;
+init_label:
+{
+	$$ = labelsCount;
+	addCode("L_"+to_string(labelsCount++) + ":");
+}
 ;
 goto:
 {
