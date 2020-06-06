@@ -21,18 +21,15 @@ binary "true"|"false"
 "else" {return ELSE_WORD;}
 "while" {return WHILE_WORD;}
 "for" {return FOR_WORD;}
-"boolean" {return BOOLEAN_WORD;}
 "int" {return INT_WORD;}
 "float" {return FLOAT_WORD;}
 ";" {return SEMICOLON;}
-"," {return COLON;}
 "(" {return LEFT_BRACKET;}
 ")" {return RIGHT_BRACKET;}
 "{" {return LEFT_BRACKET_CURLY;}
 "}" {return RIGHT_BRACKET_CURLY;}
 "++" {return INCREMENT;}
 "--" {return DECREMENT;}
-"System.out.println" {return SYSTEM_OUT;}
 \n {lineCounter++;printLineNumber(lineCounter);}
 {addop}	{yylval.operval = strdup(yytext); return ADD_OP;}
 {mulop}	{yylval.operval = strdup(yytext); return MUL_OP;}

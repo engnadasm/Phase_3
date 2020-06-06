@@ -15,7 +15,7 @@ using namespace std;
 /* file for writing output byteCode */
 ofstream fileOut("byteCode.j");
 
-typedef enum {INT_TYPE, FLOAT_TYPE, ERROR_TYPE, BOOL_TYPE} type_enum;
+typedef enum {INT_TYPE, FLOAT_TYPE, ERROR_TYPE} type_enum;
 map<string, pair<int,type_enum> > symTab;
 int variablesNum = 1;/*used to assign Number for new local variable*/
 vector<string> ListOFCode;
@@ -25,9 +25,6 @@ map<string,string> inst_list = {
 	{"-", "sub"},
 	{"/", "div"},
 	{"*", "mul"},
-	{"|", "or"},
-	{"&", "and"},
-	{"%", "rem"},
 
 	/* relational operations */
 	{"==", "if_icmpeq"},
@@ -121,13 +118,11 @@ vector<int> * checkTFList(vector<int> *list1, vector<int> *list2)
 %token FLOAT_WORD
 %token BOOLEAN_WORD
 %token SEMICOLON
-%token COLON
 %token EQUAL
 %token LEFT_BRACKET
 %token RIGHT_BRACKET
 %token LEFT_BRACKET_CURLY
 %token RIGHT_BRACKET_CURLY
-%token SYSTEM_OUT
 
 %type <ival> goto
 %type <ival> init_label
@@ -149,37 +144,32 @@ vector<int> * checkTFList(vector<int> *list1, vector<int> *list2)
 method_body : {generateHeader();} statement_list init_label {addToNext($2.nextList,$3); generateFooter();}
 ;
 statement_list : statement
-			        |
-			   statement init_label statement_list {addToNext($1.nextList,$2); $$.nextList = $3.nextList;}
+| statement init_label statement_list {addToNext($1.nextList,$2); $$.nextList = $3.nextList;}
 ;
 statement : declaration {$$.nextList = new vector<int>();}
-                | if {$$.nextList = $1.nextList;}
-				|
-				WHILE {$$.nextList = $1.nextList;}
-				|
-				FOR
-				|
-				assignment {$$.nextList = new vector<int>();}
+| if {$$.nextList = $1.nextList;}
+| WHILE {$$.nextList = $1.nextList;}
+| FOR
+| assignment {$$.nextList = new vector<int>();}
 ;
 declaration : primitive_type  IDENTIFIER SEMICOLON
 				{
 					string var($2);
 					if($1 == INT_TYPE){
 						addLocalVar(var, INT_TYPE);
-					}else if ($1 == FLOAT_TYPE){
+					}else if($1 == FLOAT_TYPE){
 						addLocalVar(var, FLOAT_TYPE);
-					}
+					}else{
+                        yyerror("primitive_type: unsupported type");
+                    }
 				}
 ;
 primitive_type  : INT_WORD { $$ = INT_TYPE;}
-					|
-				FLOAT_WORD { $$ = FLOAT_TYPE;}
-					|
-					BOOLEAN_WORD {$$ = BOOL_TYPE;}
+| FLOAT_WORD { $$ = FLOAT_TYPE;}
 ;
 boolean_exp: BOOL
 {if($1){//means bool is true
-    $$.trueList = new vector<int> ();
+    $$.trueList = new vector<int>();
     $$.trueList->push_back(ListOFCode.size());
     $$.falseList = new vector<int>();
     addCode("goto ");
@@ -262,8 +252,7 @@ expression : simple_expression {$$.dType = $1.dType;}
 | boolean_exp
 ;
 simple_expression : term {$$.dType = $1.dType;}
-					|
-					sign term
+| sign term
 					{
 						$$.dType = $2.dType;
 						if($2.dType == INT_TYPE)
@@ -275,8 +264,7 @@ simple_expression : term {$$.dType = $1.dType;}
 							addCode("fmul");
 						}
 					}
-					|
-					simple_expression ADD_OP term
+| simple_expression ADD_OP term
 					{if($1.dType == $3.dType)
 						{
 							$$.dType = $1.dType;
@@ -296,8 +284,7 @@ simple_expression : term {$$.dType = $1.dType;}
 					}
 ;
 term : factor {$$.dType = $1.dType;}
-		|
-	   term MUL_OP factor
+| term MUL_OP factor
        {
 			if($1.dType == $3.dType)
 			{
@@ -338,14 +325,11 @@ factor : IDENTIFIER
 			$$.dType = ERROR_TYPE;
 		}
 		}
-			|
-		num{$$.dType = $1.dType;}
-			|
-			LEFT_BRACKET expression RIGHT_BRACKET {$$.dType = $2.dType;}
+| num{$$.dType = $1.dType;}
+| LEFT_BRACKET expression RIGHT_BRACKET {$$.dType = $2.dType;}
 ;
 num : INT {$$.dType = INT_TYPE;  addCode("ldc "+to_string($1));}
-	   |
-	  FLOAT{$$.dType = FLOAT_TYPE; addCode("ldc "+to_string($1));}
+| FLOAT{$$.dType = FLOAT_TYPE; addCode("ldc "+to_string($1));}
 ;
 sign : ADD_OP  {
 				if(string($1) == "-"){addCode("ldc -1");}
